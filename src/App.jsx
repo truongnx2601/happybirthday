@@ -107,6 +107,7 @@ export default function App() {
           src="/intro.mp4"
           autoPlay
           playsInline
+          loop="true"
           preload="auto"
           style={{
             position: "absolute",
