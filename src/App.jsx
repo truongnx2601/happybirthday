@@ -4,39 +4,39 @@ export default function App() {
   const videoRef = useRef(null);
   const [started, setStarted] = useState(false);
 
-  // Khi người dùng bấm nút
   const handleStart = async () => {
     setStarted(true);
     const video = videoRef.current;
     if (!video) return;
 
-    // Fullscreen nếu có thể
-    const el = document.documentElement;
+    // Mobile iOS cần request gesture user mới được play
+    try {
+      video.muted = false;
+      video.volume = 1.0;
+      video.loop = true;
+      await video.play();
+    } catch (err) {
+      console.warn("Video play blocked:", err);
+    }
+
+    // Fullscreen — có khác nhau giữa trình duyệt
+    const el = video;
     try {
       if (el.requestFullscreen) await el.requestFullscreen();
+      else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen(); // iOS Safari
       else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    } catch {}
-
-    // Bật âm thanh và phát
-    video.muted = false;
-    video.volume = 1.0;
-    video.loop = true;
-    await video.play().catch(() => {});
+    } catch (err) {
+      console.warn("Fullscreen failed:", err);
+    }
   };
 
-  // Chặn thao tác sau khi phát
   useEffect(() => {
     if (!started) return;
-    const block = (e) => e.preventDefault();
-    ["contextmenu", "keydown", "click", "dblclick"].forEach((evt) =>
-      document.addEventListener(evt, block)
-    );
-    document.body.style.cursor = "none";
-
+    // Ẩn chuột trên desktop, không cần trên mobile
+    if (!/Mobi|Android/i.test(navigator.userAgent)) {
+      document.body.style.cursor = "none";
+    }
     return () => {
-      ["contextmenu", "keydown", "click", "dblclick"].forEach((evt) =>
-        document.removeEventListener(evt, block)
-      );
       document.body.style.cursor = "default";
     };
   }, [started]);
@@ -46,11 +46,12 @@ export default function App() {
       style={{
         position: "fixed",
         inset: 0,
-        background: "black",
+        backgroundColor: "black",
         overflow: "hidden",
+        touchAction: "none", // tránh gesture zoom/pan trên mobile
       }}
     >
-      {/* Nút logo khởi động */}
+      {/* Logo khởi động */}
       {!started && (
         <div
           style={{
@@ -62,6 +63,7 @@ export default function App() {
             background:
               "radial-gradient(circle at center, rgba(0,0,0,0.7), rgba(0,0,0,1))",
             zIndex: 10,
+            padding: "20px",
           }}
         >
           <button
@@ -73,20 +75,19 @@ export default function App() {
               animation: "shake 1.2s infinite",
             }}
           >
-            {/* 🧩 Thay logo/icon của bạn ở đây */}
             <img
-              src="/logo.png" // đặt logo của bạn ở public/logo.png
+              src="/logo.png"
               alt="Start Logo"
               style={{
-                width: "120px",
-                height: "120px",
+                width: "25vw", // responsive theo chiều ngang
+                maxWidth: "140px",
+                height: "auto",
                 objectFit: "contain",
                 filter: "drop-shadow(0 0 10px rgba(255,255,255,0.6))",
               }}
             />
           </button>
 
-          {/* Hiệu ứng rung lắc nhẹ */}
           <style>{`
             @keyframes shake {
               0%, 100% { transform: translate(0, 0) rotate(0); }
@@ -99,24 +100,23 @@ export default function App() {
         </div>
       )}
 
-      {/* Video full màn hình */}
+      {/* Video toàn màn hình */}
       {started && (
         <video
           ref={videoRef}
-          src="/intro.mp4" // video của bạn đặt ở public/intro.mp4
+          src="/intro.mp4"
           autoPlay
           playsInline
           preload="auto"
           style={{
-            position: "fixed",
+            position: "absolute",
             top: "50%",
             left: "50%",
-            minWidth: "100%",
-            minHeight: "100%",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover", // 👈 fill toàn màn hình, không viền
             transform: "translate(-50%, -50%)",
-            // objectFit: "contain", // 👈 giữ tỉ lệ, vừa khung
-            // backgroundColor: "black", // 👈 tránh viền trắng nếu tỉ lệ lệch
-            pointerEvents: "none", // ngăn thao tác
+            pointerEvents: "none",
             zIndex: 1,
           }}
         />
